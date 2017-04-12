@@ -55,12 +55,14 @@ app.post('/download', function (request, response) {
         var sz = data.sz.split(','),
             url = data.url,
             hrefs = store[url].hrefs,
-            i = 0, l = sz.length;
-        var tk = new downloadTask(url);
+            i = 0, l = sz.length, a,
+            tk = new downloadTask(url);
         tks[url] = tk;
         for (; i < l; i++) {
-            if (hrefs[sz[i]]) {
-                tk.add(hrefs[sz[i]], i, data.url);
+            if (a = hrefs[sz[i]]) {
+                if (a.href.substring(0, 4) !== 'http') {
+                    tk.add(a, i, data.url);
+                }
             }
         }
         tk.start();
