@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>小说下载</title>
+    <link href="index.css" rel="stylesheet">
+</head>
+<body>
+<div class="left">
+    <input id="url" type="text" placeholder="请输入地址">
+    <button id="load">加载</button>
+</div>
+<div class="right">
+    <table></table>
+    <button id="download">下载</button>
+    <div id="block">
+        <label>部分选中取消</label>
+        <input id="start" placeholder="起始序号">
+        <input id="end" placeholder="结束序号">
+        <button id="check">选中</button>
+        <button id="uncheck">取消</button>
+    </div>
+    <div class="jindu">
+        <div></div>
+        <label></label>
+    </div>
+</div>
+<div class="clear"></div>
+</body>
+<script>
+    function ajax(opt) {
+        var xmlHttp;
+        if (window.XMLHttpRequest) {
+            xmlHttp = new XMLHttpRequest();
+        } else {
+            xmlHttp = new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        if (!opt.type || opt.type.toLowerCase() !== 'post') {
+            opt.type = 'get';
+            opt.data ? opt.url = opt.url + '?' + opt.data : '';
+            opt.data = null;
+        }
+        xmlHttp.open(opt.type, opt.url);
+        xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xmlHttp.send(opt.data);
+        xmlHttp.onreadystatechange = function () {
+            if (xmlHttp.readyState == 4) {
+                if (xmlHttp.status == 200) {
+                    var data = xmlHttp.responseText;
+                    if (opt.dataType === 'json') {
+                        if (data !== '') {
+                            try {
+                                data = JSON.parse(data);
+                            }
+                            catch (e) {
+                                console.log(data);
+                                opt.error ? opt.error(e) : '';
+                            }
+                        }
+                    }
+                    opt.success(data);
+                } else {
+//                    alert('失败');
+                }
+            }
+        };
+    }
+    var input = document.getElementById('url'),
+        table = document.getElementsByTagName('table')[0],
+        start = document.getElementById('start'),
+        end = start.nextElementSibling || document.getElementById('end'),
+        jinduDiv = document.querySelector('.jindu div'),
+        jinduLabel = document.querySelector('.jindu label'),
+        idInterval,
+        dataPublic;
+    document.getElementById('load').onclick = function () {
+        jinduDiv.style.width = '0px';
+        jinduLabel.innerHTML = '';
+        start.value = '';
+        end.value = '';
+        table.innerHTML = '';
+        if (input.value) {
+            dataPublic = 'url=' + encodeURIComponent(input.value);
+            ajax({
+                data: dataPublic,
+                url: '/load',
+                type: 'post',
+                success: function () {
+                    var errorCount = 0;
+
+                    function getList() {
+                        if (errorCount !== 10) {
+                            ajax({
+                                data: dataPublic,
+                                url: '/list',
+                                dataType: 'json',
+                                success: function (data) {
+                                    if (data === '') {
+                                        errorCount++;
+                                        setTimeout(getList, 2000);
+                                    } else {
+                                        loadList(data);
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    function loadList(list) {
+                        if (list instanceof Array) {
+                            table.innerHTML = '';
+                            var fragment = document.createDocumentFragment();
+                            create({href: '路径', text: '名称'}, '序号', fragment);
+                            list.forEach(function (item, i) {
+                                create(item, i, fragment);
+                            });
+                            table.appendChild(fragment);
+                            table.children[0].children[0].children[0].onclick = function () {
+                                var child = table.children,
+                                    arr = Object.keys(child);
+                                for (var i = 1, l = arr.length; i < l; i++) {
+                                    checked(child[i], this.checked);
+                                }
+                            };
+                        }
+                    }
+
+                    function create(item, i, fragment) {
+                        var tr, td, input;
+                        tr = document.createElement('tr');
+                        td = document.createElement('td');
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.setAttribute('data-id', i);
+                        td.appendChild(input);
+                        tr.appendChild(td);
+                        createlabel(i, tr);
+                        createlabel(item.href, tr);
+                        createlabel(item.text, tr);
+                        fragment.appendChild(tr);
+                    }
+
+                    function createlabel(v, tr) {
+                        var td = document.createElement('td');
+                        var label = document.createElement('label');
+                        label.innerHTML = v;
+                        td.appendChild(label);
+                        tr.appendChild(td);
+                    }
+
+                    getList();
+                }
+            });
+        }
+    };
+    document.getElementById('check').onclick = function () {
+        startEnd(true);
+    };
+    document.getElementById('uncheck').onclick = function () {
+        startEnd(false);
+    };
+    document.getElementById('download').onclick = function () {
+        if (idInterval) {
+            return;
+        }
+        idInterval = true;
+        var check = document.querySelectorAll(':checked'),
+            len = Object.keys(check).length,
+            sz = [];
+        for (var i = 0; i < len; i++) {
+            sz.push(check[i].getAttribute('data-id'));
+        }
+        ajax({
+            data: dataPublic + '&sz=' + sz.join(','),
+            url: '/download',
+            type: 'post',
+            success: function () {
+                var errorCount = 0, runing = false;
+                idInterval = setInterval(function () {
+                    if (runing === true) {
+                        return;
+                    }
+                    if (errorCount === 10) {
+                        clearInterval(idInterval);
+                        return;
+                    }
+                    runing = true;
+                    ajax({
+                        data: dataPublic,
+                        url: '/jindu',
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.error) {
+                                return;
+                            }
+                            runing = false;
+                            var num = Math.floor(data.percent * 100);
+                            jinduDiv.style.width = num + 'px';
+                            jinduLabel.innerHTML = num + '%';
+                            if (data.percent == '1') {
+                                clearInterval(idInterval);
+                                idInterval = null;
+                                if (data.errorList) {
+                                    alert('失败章节序号:' + data.errorList.join(','));
+                                }
+                            }
+                        },
+                        error: function () {
+                            runing = false;
+                            errorCount++;
+                        }
+                    })
+                }, 500);
+            }
+        });
+    };
+    function startEnd(bool) {
+        var child = table.children,
+            len = Object.keys(child).length - 2;
+        start.value === '' ? start.value = 0 : '';
+        end.value == 0 ? end.value = len : '';
+        var v1 = +start.value,
+            v2 = +end.value;
+        if (!isNaN(v1) && !isNaN(v2)) {
+            for (; v1 <= v2; v1++) {
+                checked(child[v1 + 1], bool);
+            }
+        }
+    }
+    function checked(tr, ck) {
+        if (tr) {
+            tr.children[0].children[0].checked = ck;
+        }
+    }
+</script>
+</html>

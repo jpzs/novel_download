@@ -1,0 +1,75 @@
+#url {
+    width: 300px;
+}
+
+.left {
+    float: left;
+    width: 25%;
+}
+
+.right {
+    float: left;
+    width: 70%;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.clear {
+    clear: both;
+}
+
+table {
+    width: 600px;
+    text-align: center;
+    border-collapse: collapse;
+}
+
+tr:nth-of-type(odd) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #e2d6d6;
+}
+
+td {
+    width: 40%;
+    border: solid 1px #ddd;
+    padding: 6px;
+}
+
+td:nth-child(1), td:nth-child(2) {
+    width: 10%;
+}
+
+#download {
+    position: fixed;
+    top: 50px;
+    left: calc(25% + 650px);
+}
+
+#block {
+    position: fixed;
+    top: 50px;
+    left: calc(25% + 750px);
+}
+
+.jindu {
+    height: 30px;
+    position: fixed;
+    top: 100px;
+    left: calc(25% + 650px);
+}
+
+.jindu div {
+    border-radius: 10px;
+    background-color: #42E625;
+    height: 100%;
+    float: left;
+}
+
+.jindu label {
+    float: left;
+    margin-left: 5px;
+    line-height: 30px;
+}
